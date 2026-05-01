@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>G Tournaments</title>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+
+<style>
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: #0a0a0a;
+    color: white;
+}
+
+nav {
+    background: black;
+    padding: 15px;
+    text-align: center;
+    font-size: 22px;
+    color: orange;
+}
+
+.container {
+    max-width: 500px;
+    margin: 20px auto;
+    background: #141414;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+input {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    border: none;
+    border-radius: 5px;
+}
+
+button {
+    width: 100%;
+    padding: 10px;
+    background: orange;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+table {
+    width: 100%;
+    margin-top: 10px;
+}
+
+td, th {
+    padding: 8px;
+    text-align: center;
+}
+
+.admin {
+    border: 2px solid red;
+}
+</style>
+</head>
+
+<body>
+
+<nav>👑 G TOURNAMENTS</nav>
+
+<div class="container">
+    <h2>Login</h2>
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+</div>
+
+<div class="container">
+    <h2>Register Player</h2>
+    <input type="text" id="name" placeholder="Player Name">
+    <input type="number" id="score" placeholder="Score">
+    <button onclick="register()">Submit</button>
+</div>
+
+<div class="container">
+    <h2>Leaderboard</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Score</th>
+            </tr>
+        </thead>
+        <tbody id="board"></tbody>
+    </table>
+</div>
+
+<!-- ADMIN PANEL -->
+<div class="container admin" id="adminPanel" style="display:none;">
+    <h2>⚙️ Admin Panel</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Score</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="adminBoard"></tbody>
+    </table>
+</div>
+
+<script>
+// 🔥 SET ADMIN EMAIL
+const ADMIN_EMAIL = "oxwellpro@gmail.com";
+
+// Firebase config
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// Login
+function login() {
+    auth.signInWithEmailAndPassword(email.value, password.value)
+    .then(res => {
+        alert("Logged in");
+
+        if (res.user.email === ADMIN_EMAIL) {
+            document.getElementById("adminPanel").style.display = "block";
+            loadAdmin();
+        }
+
+        loadLeaderboard();
+    })
+    .catch(err => alert(err.message));
+}
+
+// Register
+function register() {
+    db.collection("g_tournaments").add({
+        name: name.value,
+        score: Number(score.value)
+    }).then(() => {
+        alert("Player added");
+        loadLeaderboard();
+        loadAdmin();
+    });
+}
+
+// Leaderboard
+function loadLeaderboard() {
+    const board = document.getElementById("board");
+    board.innerHTML = "";
+
+    db.collection("g_tournaments")
+    .orderBy("score", "desc")
+    .get()
+    .then(snapshot => {
+        snapshot.forEach(doc => {
+            let d = doc.data();
+            board.innerHTML += `<tr><td>${d.name}</td><td>${d.score}</td></tr>`;
+        });
+    });
+}
+
+// ADMIN VIEW
+function loadAdmin() {
+    const adminBoard = document.getElementById("adminBoard");
+    adminBoard.innerHTML = "";
+
+    db.collection("g_tournaments")
+    .get()
+    .then(snapshot => {
+        snapshot.forEach(doc => {
+            let d = doc.data();
+
+            adminBoard.innerHTML += `
+                <tr>
+                    <td>${d.name}</td>
+                    <td>
+                        <input value="${d.score}" onchange="updateScore('${doc.id}', this.value)">
+                    </td>
+                    <td>
+                        <button onclick="deletePlayer('${doc.id}')">Delete</button>
+                    </td>
+                </tr>
+            `;
+        });
+    });
+}
+
+// Update score
+function updateScore(id, newScore) {
+    db.collection("g_tournaments").doc(id).update({
+        score: Number(newScore)
+    }).then(loadLeaderboard);
+}
+
+// Delete player
+function deletePlayer(id) {
+    db.collection("g_tournaments").doc(id).delete()
+    .then(() => {
+        loadLeaderboard();
+        loadAdmin();
+    });
+}
+
+// Load leaderboard on start
+loadLeaderboard();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+const supabase = window.supabase.createClient(
+  "YOUR_PROJECT_URL",
+  "YOUR_ANON_KEY"
+);
+</script>
+
+</body>
+</html>
